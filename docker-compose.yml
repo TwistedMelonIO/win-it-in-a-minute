@@ -4,6 +4,7 @@ services:
     container_name: win-it-in-a-minute
     ports:
       - "0.0.0.0:4000:3000"
+      - "0.0.0.0:3001:3001/udp"
     environment:
       - NODE_ENV=production
     extra_hosts:

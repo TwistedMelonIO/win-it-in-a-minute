@@ -57,12 +57,19 @@ Open http://localhost:3000 in your browser
 
 ## OSC Message Format
 
+### Outgoing (to QLab)
+
 The app sends OSC messages in the format:
 ```
-/cue/{cue_number}/text "{redScore} - {blueScore}"
+/cue/REDSCORE/text "{redScore}"
+/cue/BLUESCORE/text "{blueScore}"
 ```
 
-For example, with cue number "1" and scores Red: 3, Blue: 2:
+### Incoming (from QLab)
+
+The app listens for OSC messages on port `3001` (UDP). Send the following from QLab to reset scores:
 ```
-/cue/1/text "3 - 2"
+/wiiam/reset
 ```
+
+This resets both team scores to 0 and updates all connected clients.

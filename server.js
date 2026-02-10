@@ -1,5 +1,5 @@
 const express = require('express');
-const { Client } = require('node-osc');
+const { Client, Server: OscServer } = require('node-osc');
 const WebSocket = require('ws');
 const path = require('path');
 
@@ -10,6 +10,9 @@ const PORT = 3000;
 // Use host.docker.internal when running in Docker on macOS
 const QLAB_HOST = process.env.QLAB_HOST || 'host.docker.internal';
 const QLAB_PORT = parseInt(process.env.QLAB_PORT) || 53000;
+
+// OSC listen port for incoming messages from QLab
+const OSC_LISTEN_PORT = parseInt(process.env.OSC_LISTEN_PORT) || 3001;
 
 // Create OSC client for QLab
 const oscClient = new Client(QLAB_HOST, QLAB_PORT);
@@ -181,10 +184,32 @@ wss.on('connection', (ws) => {
   });
 });
 
+// OSC server to receive messages from QLab (e.g. reset)
+const oscServer = new OscServer(OSC_LISTEN_PORT, '0.0.0.0');
+
+oscServer.on('listening', () => {
+  console.log(`OSC server listening on port ${OSC_LISTEN_PORT}`);
+  console.log(`  Send /wiiam/reset from QLab to reset scores to 0`);
+});
+
+oscServer.on('message', (msg) => {
+  const address = msg[0];
+  console.log(`OSC received: ${address}`);
+
+  if (address === '/wiiam/reset') {
+    gameState.redScore = 0;
+    gameState.blueScore = 0;
+    broadcast({ type: 'state', data: gameState });
+    sendToQLab();
+    console.log('Scores reset to 0 via OSC from QLab');
+  }
+});
+
 // Graceful shutdown
 process.on('SIGINT', () => {
   console.log('\nShutting down...');
   oscClient.close();
+  oscServer.close();
   server.close();
   process.exit(0);
 });

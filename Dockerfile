@@ -10,5 +10,6 @@ COPY server.js ./
 COPY public ./public
 
 EXPOSE 3000
+EXPOSE 3001/udp
 
 CMD ["node", "server.js"]
