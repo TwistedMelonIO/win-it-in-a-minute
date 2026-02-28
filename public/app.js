@@ -2,6 +2,9 @@
 const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
 const ws = new WebSocket(`${protocol}//${window.location.host}`);
 
+// Local score state
+let localState = { redScore: 0, blueScore: 0 };
+
 // DOM elements
 const redScoreEl = document.getElementById('red-score');
 const blueScoreEl = document.getElementById('blue-score');
@@ -15,6 +18,8 @@ const modalConfirm = document.getElementById('modal-confirm');
 
 // Update display
 function updateDisplay(state) {
+  localState.redScore = state.redScore;
+  localState.blueScore = state.blueScore;
   redScoreEl.textContent = state.redScore;
   blueScoreEl.textContent = state.blueScore;
 }
@@ -94,6 +99,13 @@ scoreBtns.forEach(btn => {
   btn.addEventListener('click', () => {
     const team = btn.dataset.team;
     const delta = parseInt(btn.dataset.delta, 10);
+    // Optimistic local update
+    if (team === 'red') {
+      localState.redScore = Math.max(0, localState.redScore + delta);
+    } else if (team === 'blue') {
+      localState.blueScore = Math.max(0, localState.blueScore + delta);
+    }
+    updateDisplay(localState);
     send({ type: 'updateScore', team, delta });
   });
 });
@@ -133,6 +145,9 @@ modalCancel.addEventListener('click', () => {
 
 // Modal confirm button
 modalConfirm.addEventListener('click', () => {
+  localState.redScore = 0;
+  localState.blueScore = 0;
+  updateDisplay(localState);
   send({ type: 'reset' });
   closeModal();
 });
@@ -153,27 +168,38 @@ document.addEventListener('keydown', (e) => {
     case 'q':
     case 'Q':
       // Red team +1
+      localState.redScore = Math.max(0, localState.redScore + 1);
+      updateDisplay(localState);
       send({ type: 'updateScore', team: 'red', delta: 1 });
       break;
     case 'a':
     case 'A':
       // Red team -1
+      localState.redScore = Math.max(0, localState.redScore - 1);
+      updateDisplay(localState);
       send({ type: 'updateScore', team: 'red', delta: -1 });
       break;
     case 'p':
     case 'P':
       // Blue team +1
+      localState.blueScore = Math.max(0, localState.blueScore + 1);
+      updateDisplay(localState);
       send({ type: 'updateScore', team: 'blue', delta: 1 });
       break;
     case 'l':
     case 'L':
       // Blue team -1
+      localState.blueScore = Math.max(0, localState.blueScore - 1);
+      updateDisplay(localState);
       send({ type: 'updateScore', team: 'blue', delta: -1 });
       break;
     case 'r':
     case 'R':
       // Reset (with Shift)
       if (e.shiftKey) {
+        localState.redScore = 0;
+        localState.blueScore = 0;
+        updateDisplay(localState);
         send({ type: 'reset' });
       }
       break;

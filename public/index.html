@@ -6,6 +6,9 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>Win It In A Minute</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Teko:wght@500;600;700&family=Russo+One&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -22,43 +25,74 @@
     <button id="reset-btn" class="dropdown-btn">Reset Scores</button>
   </div>
 
+  <!-- SVG filter for gradient blobs -->
+  <svg style="position:absolute;width:0;height:0">
+    <defs>
+      <filter id="blurMe">
+        <feGaussianBlur in="SourceGraphic" stdDeviation="10" result="blur" />
+        <feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 18 -8" result="goo" />
+        <feBlend in="SourceGraphic" in2="goo" />
+      </filter>
+    </defs>
+  </svg>
+
+  <!-- Full-page animated gradient background -->
+  <div class="gradient-bg">
+    <div class="gradient-container">
+      <div class="gradient-blob blob-1"></div>
+      <div class="gradient-blob blob-2"></div>
+      <div class="gradient-blob blob-3"></div>
+      <div class="gradient-blob blob-4"></div>
+      <div class="gradient-blob blob-5"></div>
+    </div>
+  </div>
+
+  <!-- Noise texture overlay -->
+  <div class="noise-overlay"></div>
+
   <div class="container">
+    <!-- Arena center divider -->
+    <div class="arena-divider"></div>
     <!-- Red Team Side -->
     <div class="team-side red-side">
-      <button class="score-btn minus-btn" data-team="red" data-delta="-1">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round">
-          <line x1="5" y1="12" x2="19" y2="12"></line>
-        </svg>
-      </button>
-      <div class="score-display">
+      <div class="team-content">
         <span class="team-label">Red Team</span>
-        <span id="red-score" class="score">0</span>
+        <div class="score-row">
+          <button class="score-btn minus-btn" data-team="red" data-delta="-1">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round">
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+          </button>
+          <span id="red-score" class="score">0</span>
+          <button class="score-btn plus-btn" data-team="red" data-delta="1">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+          </button>
+        </div>
       </div>
-      <button class="score-btn plus-btn" data-team="red" data-delta="1">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round">
-          <line x1="12" y1="5" x2="12" y2="19"></line>
-          <line x1="5" y1="12" x2="19" y2="12"></line>
-        </svg>
-      </button>
     </div>
     
     <!-- Blue Team Side -->
     <div class="team-side blue-side">
-      <button class="score-btn minus-btn" data-team="blue" data-delta="-1">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round">
-          <line x1="5" y1="12" x2="19" y2="12"></line>
-        </svg>
-      </button>
-      <div class="score-display">
+      <div class="team-content">
         <span class="team-label">Blue Team</span>
-        <span id="blue-score" class="score">0</span>
+        <div class="score-row">
+          <button class="score-btn minus-btn" data-team="blue" data-delta="-1">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round">
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+          </button>
+          <span id="blue-score" class="score">0</span>
+          <button class="score-btn plus-btn" data-team="blue" data-delta="1">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+          </button>
+        </div>
       </div>
-      <button class="score-btn plus-btn" data-team="blue" data-delta="1">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round">
-          <line x1="12" y1="5" x2="12" y2="19"></line>
-          <line x1="5" y1="12" x2="19" y2="12"></line>
-        </svg>
-      </button>
     </div>
   </div>
   
