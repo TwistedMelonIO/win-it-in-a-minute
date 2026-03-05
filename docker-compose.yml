@@ -7,6 +7,12 @@ services:
       - "0.0.0.0:3001:3001/udp"
     environment:
       - NODE_ENV=production
+      - LICENSE_KEY=${LICENSE_KEY:-}
+    volumes:
+      - wiiam-data:/app/data
     extra_hosts:
       - "host.docker.internal:host-gateway"
     restart: unless-stopped
+
+volumes:
+  wiiam-data:

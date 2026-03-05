@@ -12,18 +12,31 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+  <!-- License Gate Overlay -->
+  <div id="license-gate" class="license-gate">
+    <div class="license-gate-box">
+      <h2>WIN IT IN A MINUTE</h2>
+      <p class="subtitle">A valid license is required to use this application.</p>
+      <div class="machine-id-label">Your Machine ID</div>
+      <div class="machine-id-value" id="gate-machine-id"
+           onclick="copyMachineId()" title="Click to copy">Loading...</div>
+      <div class="copy-hint" id="gate-copy-hint">Click to copy</div>
+      <div class="error-msg" id="gate-error">Checking license...</div>
+      <div class="instructions">
+        1. Copy the Machine ID above<br>
+        2. Send it to your license provider<br>
+        3. Run <strong>install_license.sh</strong> and paste the key you receive
+      </div>
+    </div>
+  </div>
+
   <!-- Settings Cog -->
-  <div class="settings-cog" id="settings-cog">
+  <a href="/settings.html" class="settings-cog" id="settings-cog">
     <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <circle cx="12" cy="12" r="3"></circle>
       <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
     </svg>
-  </div>
-  
-  <!-- Settings Dropdown -->
-  <div class="settings-dropdown" id="settings-dropdown">
-    <button id="reset-btn" class="dropdown-btn">Reset Scores</button>
-  </div>
+  </a>
 
   <!-- SVG filter for gradient blobs -->
   <svg style="position:absolute;width:0;height:0">
@@ -95,21 +108,6 @@
       </div>
     </div>
   </div>
-  
-  <!-- Reset Confirmation Modal -->
-  <div class="modal-overlay" id="modal-overlay">
-    <div class="modal">
-      <div class="modal-content">
-        <h2 class="modal-title">Reset Scores</h2>
-        <p class="modal-message">Are you sure you want to reset both scores to 0?</p>
-      </div>
-      <div class="modal-actions">
-        <button class="modal-btn modal-cancel" id="modal-cancel">Cancel</button>
-        <button class="modal-btn modal-confirm" id="modal-confirm">Reset</button>
-      </div>
-    </div>
-  </div>
-
   <script src="app.js"></script>
 </body>
 </html>

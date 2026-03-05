@@ -2,6 +2,7 @@ const express = require('express');
 const { Client, Server: OscServer } = require('node-osc');
 const WebSocket = require('ws');
 const path = require('path');
+const { spawn } = require('child_process');
 
 const app = express();
 const PORT = 3000;
@@ -23,6 +24,102 @@ let gameState = {
   blueScore: 0,
   textCueNumber: '1' // Default text cue number in QLab
 };
+
+// ── License state ──────────────────────────────────────
+let licenseState = {
+  valid: false,
+  error: 'License not yet checked',
+  licensee: null,
+  features: [],
+  expiration: null,
+  machine_id: null
+};
+
+// ── Application log buffer ─────────────────────────────
+const MAX_LOG_LINES = 500;
+let logBuffer = [];
+
+function addLog(level, message) {
+  const entry = {
+    timestamp: new Date().toISOString(),
+    level,
+    message
+  };
+  logBuffer.push(entry);
+  if (logBuffer.length > MAX_LOG_LINES) {
+    logBuffer = logBuffer.slice(-MAX_LOG_LINES);
+  }
+  // Also print to console
+  console.log(`[${entry.level}] ${entry.message}`);
+}
+
+// ── License helpers ────────────────────────────────────
+function runPythonScript(scriptName, args = []) {
+  return new Promise((resolve, reject) => {
+    const proc = spawn('python3', [path.join(__dirname, scriptName), ...args]);
+    let stdout = '';
+    let stderr = '';
+    proc.stdout.on('data', (d) => { stdout += d.toString(); });
+    proc.stderr.on('data', (d) => { stderr += d.toString(); });
+    proc.on('close', (code) => {
+      if (code === 0 || stdout.trim()) {
+        resolve(stdout.trim());
+      } else {
+        reject(new Error(stderr.trim() || `Process exited with code ${code}`));
+      }
+    });
+    proc.on('error', reject);
+  });
+}
+
+async function initializeLicense() {
+  try {
+    // Get machine ID
+    const machineId = await runPythonScript('machine_id_simple.py');
+    addLog('INFO', `Machine ID: ${machineId}`);
+
+    // Validate license
+    try {
+      const output = await runPythonScript('license_validator_simple.py', [machineId]);
+      licenseState = JSON.parse(output);
+    } catch (err) {
+      // The validator exits code 1 for invalid licenses but still outputs JSON
+      try {
+        licenseState = JSON.parse(err.message);
+      } catch {
+        licenseState = {
+          valid: false,
+          error: err.message || 'License validation failed',
+          licensee: null,
+          features: [],
+          expiration: null,
+          machine_id: machineId
+        };
+      }
+    }
+
+    // Ensure machine_id is always set
+    if (!licenseState.machine_id) {
+      licenseState.machine_id = machineId;
+    }
+
+    if (licenseState.valid) {
+      addLog('INFO', 'License is VALID');
+    } else {
+      addLog('WARN', `License invalid: ${licenseState.error}`);
+    }
+  } catch (err) {
+    addLog('ERROR', `License initialization error: ${err.message}`);
+    licenseState = {
+      valid: false,
+      error: `License check error: ${err.message}`,
+      licensee: null,
+      features: [],
+      expiration: null,
+      machine_id: null
+    };
+  }
+}
 
 // CORS headers for mobile browsers
 app.use((req, res, next) => {
@@ -88,23 +185,42 @@ app.post('/api/cue-number', (req, res) => {
   }
 });
 
-// Start HTTP server
-const server = app.listen(PORT, () => {
-  console.log(`Win It In A Minute server running at http://localhost:${PORT}`);
-  console.log(`OSC sending to QLab at ${QLAB_HOST}:${QLAB_PORT}`);
+// ── License API endpoints ──────────────────────────────
+app.get('/api/license_status', (req, res) => {
+  res.json(licenseState);
 });
 
-// WebSocket server for real-time updates
-const wss = new WebSocket.Server({ server });
+app.post('/api/validate_license', async (req, res) => {
+  await initializeLicense();
+  res.json(licenseState);
+});
 
-// Broadcast to all connected clients
-function broadcast(data) {
-  wss.clients.forEach(client => {
-    if (client.readyState === WebSocket.OPEN) {
-      client.send(JSON.stringify(data));
-    }
-  });
-}
+// ── Logs API endpoint ──────────────────────────────────
+app.get('/api/logs', (req, res) => {
+  res.json({ logs: logBuffer });
+});
+
+// ── Master Reset API endpoint ──────────────────────────
+app.post('/api/master_reset', (req, res) => {
+  addLog('WARN', 'Master reset triggered');
+
+  // Reset game state
+  gameState.redScore = 0;
+  gameState.blueScore = 0;
+  gameState.textCueNumber = '1';
+
+  // Broadcast reset to all WebSocket clients
+  broadcast({ type: 'state', data: gameState });
+
+  // Send reset to QLab
+  sendToQLab();
+
+  // Clear logs
+  logBuffer = [];
+  addLog('INFO', 'System reset complete');
+
+  res.json({ success: true, message: 'Master reset complete' });
+});
 
 // Send score update to QLab via OSC
 function sendToQLab() {
@@ -130,86 +246,113 @@ function sendToQLab() {
   });
 }
 
-// Handle WebSocket connections
-wss.on('connection', (ws) => {
-  console.log('Client connected');
-  
-  // Send current state on connect
-  ws.send(JSON.stringify({ type: 'state', data: gameState }));
-  
-  ws.on('message', (message) => {
-    try {
-      const msg = JSON.parse(message);
-      
-      switch (msg.type) {
-        case 'updateScore':
-          if (msg.team === 'red') {
-            gameState.redScore = Math.max(0, gameState.redScore + msg.delta);
-          } else if (msg.team === 'blue') {
-            gameState.blueScore = Math.max(0, gameState.blueScore + msg.delta);
-          }
-          break;
-          
-        case 'setScore':
-          if (msg.team === 'red') {
-            gameState.redScore = Math.max(0, msg.value);
-          } else if (msg.team === 'blue') {
-            gameState.blueScore = Math.max(0, msg.value);
-          }
-          break;
-          
-        case 'reset':
-          gameState.redScore = 0;
-          gameState.blueScore = 0;
-          break;
-          
-        case 'setCueNumber':
-          gameState.textCueNumber = msg.cueNumber;
-          break;
-      }
-      
-      // Broadcast updated state to all clients
-      broadcast({ type: 'state', data: gameState });
-      
-      // Send to QLab
-      sendToQLab();
-      
-    } catch (err) {
-      console.error('Message parse error:', err);
+// Broadcast to all connected WebSocket clients
+let wss;
+
+function broadcast(data) {
+  if (!wss) return;
+  wss.clients.forEach(client => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(JSON.stringify(data));
     }
   });
-  
-  ws.on('close', () => {
-    console.log('Client disconnected');
+}
+
+// Initialize license then start server
+(async function boot() {
+  addLog('INFO', 'Win It In A Minute server starting...');
+  await initializeLicense();
+
+  // Start HTTP server
+  const server = app.listen(PORT, () => {
+    addLog('INFO', `Server running at http://localhost:${PORT}`);
+    addLog('INFO', `OSC sending to QLab at ${QLAB_HOST}:${QLAB_PORT}`);
   });
-});
 
-// OSC server to receive messages from QLab (e.g. reset)
-const oscServer = new OscServer(OSC_LISTEN_PORT, '0.0.0.0');
+  // WebSocket server for real-time updates
+  wss = new WebSocket.Server({ server });
 
-oscServer.on('listening', () => {
-  console.log(`OSC server listening on port ${OSC_LISTEN_PORT}`);
-  console.log(`  Send /wiiam/reset from QLab to reset scores to 0`);
-});
+  // Handle WebSocket connections
+  wss.on('connection', (ws) => {
+    console.log('Client connected');
+    
+    // Send current state on connect
+    ws.send(JSON.stringify({ type: 'state', data: gameState }));
+    
+    ws.on('message', (message) => {
+      try {
+        const msg = JSON.parse(message);
+        
+        switch (msg.type) {
+          case 'updateScore':
+            if (msg.team === 'red') {
+              gameState.redScore = Math.max(0, gameState.redScore + msg.delta);
+            } else if (msg.team === 'blue') {
+              gameState.blueScore = Math.max(0, gameState.blueScore + msg.delta);
+            }
+            break;
+            
+          case 'setScore':
+            if (msg.team === 'red') {
+              gameState.redScore = Math.max(0, msg.value);
+            } else if (msg.team === 'blue') {
+              gameState.blueScore = Math.max(0, msg.value);
+            }
+            break;
+            
+          case 'reset':
+            gameState.redScore = 0;
+            gameState.blueScore = 0;
+            break;
+            
+          case 'setCueNumber':
+            gameState.textCueNumber = msg.cueNumber;
+            break;
+        }
+        
+        // Broadcast updated state to all clients
+        broadcast({ type: 'state', data: gameState });
+        
+        // Send to QLab
+        sendToQLab();
+        
+      } catch (err) {
+        console.error('Message parse error:', err);
+      }
+    });
+    
+    ws.on('close', () => {
+      console.log('Client disconnected');
+    });
+  });
 
-oscServer.on('message', (msg) => {
-  const address = msg[0];
-  console.log(`OSC received: ${address}`);
+  // OSC server to receive messages from QLab (e.g. reset)
+  const oscServer = new OscServer(OSC_LISTEN_PORT, '0.0.0.0');
 
-  if (address === '/wiiam/reset') {
-    gameState.redScore = 0;
-    gameState.blueScore = 0;
-    broadcast({ type: 'state', data: gameState });
-    sendToQLab();
-    console.log('Scores reset to 0 via OSC from QLab');
-  }
-});
+  oscServer.on('listening', () => {
+    console.log(`OSC server listening on port ${OSC_LISTEN_PORT}`);
+    console.log(`  Send /wiiam/reset from QLab to reset scores to 0`);
+  });
 
-// Graceful shutdown
-process.on('SIGINT', () => {
-  console.log('\nShutting down...');
-  oscClient.close();
-  oscServer.close();
-  server.close();
-  process.exit(0);
-});
+  oscServer.on('message', (msg) => {
+    const address = msg[0];
+    console.log(`OSC received: ${address}`);
+
+    if (address === '/wiiam/reset') {
+      gameState.redScore = 0;
+      gameState.blueScore = 0;
+      broadcast({ type: 'state', data: gameState });
+      sendToQLab();
+      console.log('Scores reset to 0 via OSC from QLab');
+    }
+  });
+
+  // Graceful shutdown
+  process.on('SIGINT', () => {
+    console.log('\nShutting down...');
+    oscClient.close();
+    oscServer.close();
+    server.close();
+    process.exit(0);
+  });
+})();

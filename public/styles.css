@@ -512,6 +512,106 @@ html {
   letter-spacing: 0.02em;
 }
 
+/* ---------- LICENSE GATE ---------- */
+
+.license-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(5, 5, 16, 0.97);
+  backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.license-gate.hidden {
+  display: none;
+}
+
+.license-gate-box {
+  background: rgba(15, 15, 30, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  padding: 48px;
+  max-width: 520px;
+  width: 90%;
+  text-align: center;
+  box-shadow:
+    0 25px 80px rgba(0, 0, 0, 0.6),
+    0 0 60px rgba(255, 45, 85, 0.06);
+  backdrop-filter: blur(40px) saturate(1.5);
+}
+
+.license-gate-box h2 {
+  font-family: 'Russo One', sans-serif;
+  font-size: 1.5rem;
+  font-weight: 400;
+  color: #ffffff;
+  margin-bottom: 8px;
+  letter-spacing: 0.08em;
+}
+
+.license-gate-box .subtitle {
+  color: #5a5a5a;
+  font-size: 0.85rem;
+  margin-bottom: 28px;
+  font-family: 'Barlow', sans-serif;
+}
+
+.license-gate-box .machine-id-label {
+  color: #8b8b8b;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 6px;
+  font-family: 'Barlow', sans-serif;
+}
+
+.license-gate-box .machine-id-value {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 0.72rem;
+  color: #a5b4fc;
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(99, 102, 241, 0.15);
+  border-radius: 8px;
+  padding: 10px 14px;
+  word-break: break-all;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-bottom: 18px;
+}
+
+.license-gate-box .machine-id-value:hover {
+  background: rgba(99, 102, 241, 0.14);
+  border-color: rgba(99, 102, 241, 0.3);
+}
+
+.license-gate-box .copy-hint {
+  color: #5a5a5a;
+  font-size: 0.7rem;
+  margin-bottom: 24px;
+  font-family: 'Barlow', sans-serif;
+}
+
+.license-gate-box .error-msg {
+  color: #f87171;
+  font-size: 0.8rem;
+  background: rgba(248, 113, 113, 0.06);
+  border: 1px solid rgba(248, 113, 113, 0.12);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 20px;
+  font-family: 'Barlow', sans-serif;
+}
+
+.license-gate-box .instructions {
+  color: #5a5a5a;
+  font-size: 0.75rem;
+  line-height: 1.7;
+  font-family: 'Barlow', sans-serif;
+}
+
 /* ---------- RESPONSIVE ---------- */
 
 /* iPad landscape */

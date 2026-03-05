@@ -8,13 +8,7 @@ let localState = { redScore: 0, blueScore: 0 };
 // DOM elements
 const redScoreEl = document.getElementById('red-score');
 const blueScoreEl = document.getElementById('blue-score');
-const resetBtn = document.getElementById('reset-btn');
 const scoreBtns = document.querySelectorAll('.score-btn');
-const settingsCog = document.getElementById('settings-cog');
-const settingsDropdown = document.getElementById('settings-dropdown');
-const modalOverlay = document.getElementById('modal-overlay');
-const modalCancel = document.getElementById('modal-cancel');
-const modalConfirm = document.getElementById('modal-confirm');
 
 // Update display
 function updateDisplay(state) {
@@ -110,54 +104,71 @@ scoreBtns.forEach(btn => {
   });
 });
 
-// Settings cog toggle
-settingsCog.addEventListener('click', (e) => {
-  e.stopPropagation();
-  settingsDropdown.classList.toggle('open');
-});
 
-// Close dropdown when clicking outside
-document.addEventListener('click', (e) => {
-  if (!settingsDropdown.contains(e.target) && !settingsCog.contains(e.target)) {
-    settingsDropdown.classList.remove('open');
+// ── License gate ──────────────────────────────────────
+async function checkLicenseStatus() {
+  try {
+    const res = await fetch('/api/license_status');
+    const data = await res.json();
+    updateLicenseGate(data);
+  } catch (e) {
+    console.error('License check failed:', e);
   }
-});
-
-// Modal functions
-function openModal() {
-  modalOverlay.classList.add('open');
-  settingsDropdown.classList.remove('open');
 }
 
-function closeModal() {
-  modalOverlay.classList.remove('open');
+function updateLicenseGate(data) {
+  const gate = document.getElementById('license-gate');
+  const machineIdEl = document.getElementById('gate-machine-id');
+  const errorEl = document.getElementById('gate-error');
+
+  if (data.machine_id) machineIdEl.textContent = data.machine_id;
+
+  if (data.valid) {
+    gate.classList.add('hidden');
+  } else {
+    gate.classList.remove('hidden');
+    errorEl.textContent = data.error || 'License is not valid';
+  }
 }
 
-// Reset scores - show modal
-resetBtn.addEventListener('click', () => {
-  openModal();
-});
+function copyMachineId() {
+  const mid = document.getElementById('gate-machine-id').textContent;
+  if (!mid || mid === 'Loading...') return;
 
-// Modal cancel button
-modalCancel.addEventListener('click', () => {
-  closeModal();
-});
+  const hint = document.getElementById('gate-copy-hint');
 
-// Modal confirm button
-modalConfirm.addEventListener('click', () => {
-  localState.redScore = 0;
-  localState.blueScore = 0;
-  updateDisplay(localState);
-  send({ type: 'reset' });
-  closeModal();
-});
-
-// Close modal when clicking overlay background
-modalOverlay.addEventListener('click', (e) => {
-  if (e.target === modalOverlay) {
-    closeModal();
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(mid).then(() => {
+      hint.textContent = 'Copied!';
+      setTimeout(() => { hint.textContent = 'Click to copy'; }, 2000);
+    }).catch(() => fallbackCopy(mid));
+  } else {
+    fallbackCopy(mid);
   }
-});
+}
+
+function fallbackCopy(text) {
+  const hint = document.getElementById('gate-copy-hint');
+  const textArea = document.createElement('textarea');
+  textArea.value = text;
+  textArea.style.position = 'fixed';
+  textArea.style.left = '-999999px';
+  textArea.style.top = '-999999px';
+  document.body.appendChild(textArea);
+  textArea.focus();
+  textArea.select();
+  try {
+    const ok = document.execCommand('copy');
+    hint.textContent = ok ? 'Copied!' : 'Copy failed - try manual copy';
+  } catch (err) {
+    hint.textContent = 'Copy failed - try manual copy';
+  }
+  document.body.removeChild(textArea);
+  setTimeout(() => { hint.textContent = 'Click to copy'; }, 2000);
+}
+
+checkLicenseStatus();
+setInterval(checkLicenseStatus, 30000);
 
 // Keyboard shortcuts
 document.addEventListener('keydown', (e) => {
