@@ -2,6 +2,7 @@ const express = require('express');
 const { Client, Server: OscServer } = require('node-osc');
 const WebSocket = require('ws');
 const path = require('path');
+const fs = require('fs');
 const { spawn } = require('child_process');
 
 const app = express();
@@ -191,6 +192,34 @@ app.get('/api/license_status', (req, res) => {
 });
 
 app.post('/api/validate_license', async (req, res) => {
+  await initializeLicense();
+  res.json(licenseState);
+});
+
+// Activate license key via web UI
+app.post('/api/activate_license', async (req, res) => {
+  const { license_key } = req.body;
+  if (!license_key || !license_key.trim()) {
+    return res.status(400).json({ valid: false, error: 'No license key provided' });
+  }
+
+  const key = license_key.trim();
+
+  // Set in current process environment
+  process.env.LICENSE_KEY = key;
+
+  // Persist to data directory so it survives container restarts
+  const dataDir = '/app/data';
+  try {
+    if (fs.existsSync(dataDir)) {
+      fs.writeFileSync(path.join(dataDir, 'license_key'), key, 'utf8');
+      addLog('INFO', 'License key saved to persistent storage');
+    }
+  } catch (err) {
+    addLog('ERROR', 'Failed to persist license key: ' + err.message);
+  }
+
+  // Re-validate with the new key
   await initializeLicense();
   res.json(licenseState);
 });

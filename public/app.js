@@ -131,6 +131,48 @@ function updateLicenseGate(data) {
   }
 }
 
+async function activateLicense() {
+  const input = document.getElementById('gate-license-input');
+  const btn = document.getElementById('gate-activate-btn');
+  const status = document.getElementById('gate-activate-status');
+  const key = input ? input.value.trim() : '';
+
+  if (!key) {
+    status.textContent = 'Please paste a license key first.';
+    status.className = 'activate-status error';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Activating...';
+  status.textContent = '';
+  status.className = 'activate-status';
+
+  try {
+    const res = await fetch('/api/activate_license', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ license_key: key })
+    });
+    const data = await res.json();
+
+    if (data.valid) {
+      status.textContent = 'License activated successfully!';
+      status.className = 'activate-status success';
+      updateLicenseGate(data);
+    } else {
+      status.textContent = data.error || 'Invalid license key.';
+      status.className = 'activate-status error';
+    }
+  } catch (e) {
+    status.textContent = 'Failed to contact server. Please try again.';
+    status.className = 'activate-status error';
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Activate License';
+}
+
 function copyMachineId() {
   const mid = document.getElementById('gate-machine-id').textContent;
   if (!mid || mid === 'Loading...') return;
