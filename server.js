@@ -360,20 +360,69 @@ function broadcast(data) {
 
   oscServer.on('listening', () => {
     console.log(`OSC server listening on port ${OSC_LISTEN_PORT}`);
-    console.log(`  Send /wiiam/reset from QLab to reset scores to 0`);
+    console.log('');
+    console.log('=== Companion / QLab OSC Commands ===');
+    console.log(`  /wiiam/red/up        → Red team +1`);
+    console.log(`  /wiiam/red/down      → Red team -1`);
+    console.log(`  /wiiam/blue/up       → Blue team +1`);
+    console.log(`  /wiiam/blue/down     → Blue team -1`);
+    console.log(`  /wiiam/reset         → Reset both teams`);
+    console.log(`  /wiiam/reset/red     → Reset red team only`);
+    console.log(`  /wiiam/reset/blue    → Reset blue team only`);
+    console.log('=====================================');
   });
 
   oscServer.on('message', (msg) => {
     const address = msg[0];
-    console.log(`OSC received: ${address}`);
+    addLog('INFO', `OSC received: ${address}`);
 
-    if (address === '/wiiam/reset') {
-      gameState.redScore = 0;
-      gameState.blueScore = 0;
-      broadcast({ type: 'state', data: gameState });
-      sendToQLab();
-      console.log('Scores reset to 0 via OSC from QLab');
+    switch (address) {
+      // ── Score adjustments ────────────────────────────
+      case '/wiiam/red/up':
+        gameState.redScore = gameState.redScore + 1;
+        addLog('INFO', `[Companion] Red +1 → ${gameState.redScore}`);
+        break;
+
+      case '/wiiam/red/down':
+        gameState.redScore = Math.max(0, gameState.redScore - 1);
+        addLog('INFO', `[Companion] Red -1 → ${gameState.redScore}`);
+        break;
+
+      case '/wiiam/blue/up':
+        gameState.blueScore = gameState.blueScore + 1;
+        addLog('INFO', `[Companion] Blue +1 → ${gameState.blueScore}`);
+        break;
+
+      case '/wiiam/blue/down':
+        gameState.blueScore = Math.max(0, gameState.blueScore - 1);
+        addLog('INFO', `[Companion] Blue -1 → ${gameState.blueScore}`);
+        break;
+
+      // ── Resets ───────────────────────────────────────
+      case '/wiiam/reset':
+        gameState.redScore = 0;
+        gameState.blueScore = 0;
+        addLog('INFO', '[Companion] Both teams reset to 0');
+        break;
+
+      case '/wiiam/reset/red':
+        gameState.redScore = 0;
+        addLog('INFO', '[Companion] Red team reset to 0');
+        break;
+
+      case '/wiiam/reset/blue':
+        gameState.blueScore = 0;
+        addLog('INFO', '[Companion] Blue team reset to 0');
+        break;
+
+      default:
+        addLog('WARN', `Unknown OSC address: ${address}`);
+        return; // Don't broadcast for unknown commands
     }
+
+    // Broadcast updated state and sync to QLab
+    broadcast({ type: 'state', data: gameState });
+    sendToQLab();
   });
 
   // Graceful shutdown

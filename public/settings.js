@@ -346,3 +346,14 @@ function showCopyFeedback(el) {
     el.style.color = '';
   }, 1500);
 }
+
+// ── Update footer immediately on page load (before passcode) ──
+(async function updateFooterOnLoad() {
+  try {
+    const res = await fetch('/api/license_status');
+    const data = await res.json();
+    updateFooterLicenseStatus(data);
+  } catch (err) {
+    // silent — footer keeps HTML defaults
+  }
+})();
