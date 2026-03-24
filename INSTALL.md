@@ -51,6 +51,28 @@ Navigate to [http://localhost:4000](http://localhost:4000) in your browser.
 
 ---
 
+## Reinstall / Update
+
+### Quick update (keeps your settings)
+
+From inside the `win-it-in-a-minute` folder:
+
+```bash
+git pull && docker compose up -d --build
+```
+
+Your license key is preserved.
+
+### Full clean reinstall
+
+Removes everything and starts fresh. You will need to enter your license key again.
+
+```bash
+cd ~/Desktop && rm -rf win-it-in-a-minute && git clone https://github.com/TwistedMelonIO/win-it-in-a-minute.git && cd win-it-in-a-minute && ./install_license.sh
+```
+
+---
+
 ## QLab Setup
 
 Win It In A Minute sends score updates to QLab via OSC. QLab must be running and listening on port **53000**.

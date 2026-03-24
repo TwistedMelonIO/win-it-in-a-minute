@@ -22,6 +22,20 @@ The script will guide you through:
 
 For the full setup guide, see [INSTALL.md](INSTALL.md).
 
+## Reinstall / Update
+
+Already installed? From inside the `win-it-in-a-minute` folder, copy and paste:
+
+```bash
+git pull && docker compose up -d --build
+```
+
+Or to do a full clean reinstall (re-downloads everything):
+
+```bash
+cd ~/Desktop && rm -rf win-it-in-a-minute && git clone https://github.com/TwistedMelonIO/win-it-in-a-minute.git && cd win-it-in-a-minute && ./install_license.sh
+```
+
 ---
 
 ## Features
