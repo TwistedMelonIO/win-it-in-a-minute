@@ -23,7 +23,7 @@ Ensure Docker Desktop is running before proceeding.
 Copy and paste this into Terminal:
 
 ```bash
-git clone https://github.com/TwistedMelonIO/win-it-in-a-minute.git && cd win-it-in-a-minute && ./install_license.sh
+cd ~/Desktop && git clone https://github.com/TwistedMelonIO/win-it-in-a-minute.git && cd win-it-in-a-minute && ./install_license.sh
 ```
 
 The script will walk you through the full setup:
