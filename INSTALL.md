@@ -139,6 +139,18 @@ When the browser window is in focus, the following keyboard shortcuts are availa
 
 ---
 
+## Uninstall
+
+To completely remove Win It In A Minute from a machine, run from inside the project folder:
+
+```bash
+./uninstall.sh
+```
+
+This removes all Docker containers, images, volumes (including license and settings), and the project folder itself. You will be asked to type `YES` to confirm.
+
+---
+
 ## Troubleshooting
 
 **Docker not running**

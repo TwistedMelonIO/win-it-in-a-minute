@@ -88,6 +88,16 @@ Create two text cues in QLab named `REDSCORE` and `BLUESCORE`. The app sends:
 /cue/BLUESCORE/text "{score}"
 ```
 
+## Uninstall
+
+To completely remove Win It In A Minute from a machine (containers, images, volumes, and project files):
+
+```bash
+./uninstall.sh
+```
+
+You will be asked to type `YES` to confirm. This cannot be undone.
+
 ## Docker Commands
 
 | Task | Command |
