@@ -18,32 +18,24 @@ Ensure Docker Desktop is running before proceeding.
 
 ## Installation
 
-### 1. Clone the repository
+### 1. Clone and Run
+
+Copy and paste this into Terminal:
 
 ```bash
-git clone https://github.com/TwistedMelonIO/win-it-in-a-minute.git
-cd win-it-in-a-minute
+git clone https://github.com/TwistedMelonIO/win-it-in-a-minute.git && cd win-it-in-a-minute && ./install_license.sh
 ```
 
-### 2. Run the install script
+The script will walk you through the full setup:
 
-```bash
-./install_license.sh
-```
+1. **Docker Build** — builds and starts the Docker container
+2. **Machine ID** — retrieves your unique Machine ID and copies it to your clipboard
 
-Alternatively, drag `install_license.sh` into a Terminal window and press Enter.
-
-The script will:
-
-- Verify Docker is running
-- Build and start the Docker container
-- Retrieve your unique **Machine ID** and copy it to your clipboard
-
-### 3. Request your license key
+### 2. Request your license key
 
 Send your Machine ID to [hello@twistedmelon.com](mailto:hello@twistedmelon.com). You will receive a license key tied to your machine.
 
-### 4. Apply the license key
+### 3. Apply the license key
 
 Once you have your license key, re-run the install script:
 
@@ -53,7 +45,7 @@ Once you have your license key, re-run the install script:
 
 When prompted, paste your license key. The script will validate it and restart the container with the license applied.
 
-### 5. Open the application
+### 4. Open the application
 
 Navigate to [http://localhost:4000](http://localhost:4000) in your browser.
 
