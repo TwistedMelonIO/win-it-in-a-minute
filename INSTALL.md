@@ -23,7 +23,7 @@ Ensure Docker Desktop is running before proceeding.
 Copy and paste this into Terminal:
 
 ```bash
-cd ~/Desktop && git clone https://github.com/TwistedMelonIO/win-it-in-a-minute.git && cd win-it-in-a-minute && ./install_license.sh
+cd ~ && git clone https://github.com/TwistedMelonIO/win-it-in-a-minute.git && cd win-it-in-a-minute && ./install_license.sh
 ```
 
 The script will walk you through the full setup:
@@ -68,7 +68,7 @@ Your license key is preserved.
 Removes everything and starts fresh. You will need to enter your license key again.
 
 ```bash
-cd ~/Desktop && rm -rf win-it-in-a-minute && git clone https://github.com/TwistedMelonIO/win-it-in-a-minute.git && cd win-it-in-a-minute && ./install_license.sh
+cd ~ && rm -rf win-it-in-a-minute && git clone https://github.com/TwistedMelonIO/win-it-in-a-minute.git && cd win-it-in-a-minute && ./install_license.sh
 ```
 
 ---
