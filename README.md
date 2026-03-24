@@ -1,75 +1,91 @@
 # Win It In A Minute
 
-A scoring web application with OSC integration for QLab text cue updates.
+A split-screen gameshow scoring system by [Twisted Melon](https://twistedmelon.com), with real-time QLab integration via OSC.
+
+Requires **Docker** and a **license key** to run.
+
+---
+
+## Quick Install
+
+Make sure [Docker Desktop](https://www.docker.com/products/docker-desktop/) is running, then copy and paste into Terminal:
+
+```bash
+git clone https://github.com/TwistedMelonIO/win-it-in-a-minute.git && cd win-it-in-a-minute && ./install_license.sh
+```
+
+The script will guide you through:
+
+1. Building and starting the Docker container
+2. Retrieving your **Machine ID** (copied to clipboard)
+3. Entering your **license key** (or skip and add later)
+
+For the full setup guide, see [INSTALL.md](INSTALL.md).
+
+---
 
 ## Features
 
-- **Split-screen scoring UI** - Red team on left, Blue team on right
-- **Large score displays** - Easy to read from a distance
-- **+/- buttons** - Increment or decrement scores
-- **Real-time sync** - Multiple browser windows stay in sync via WebSocket
-- **OSC to QLab** - Automatically sends score updates to a QLab text cue
+- Split-screen scoring UI (Red team vs Blue team)
+- Large score displays, easy to read from a distance
+- Real-time sync across multiple browser windows via WebSocket
+- QLab 5 integration via OSC (sends score updates to text cues)
+- Incoming OSC commands for remote score control
+- Docker containerized deployment
+- Keyboard shortcuts for fast scoring
 
-## Setup
+## Usage
 
-### Option 1: Docker (Recommended)
+| | |
+|---|---|
+| **Web UI** | http://localhost:4000 |
+| **Settings Panel** | Bottom of the web app |
+| **OSC Output** | Sends to QLab on port 53000 |
+| **OSC Input** | Listens on port 3001 (UDP) |
 
-```bash
-docker compose up -d
-```
-
-Or build and run manually:
-```bash
-docker build -t win-it-in-a-minute .
-docker run -d --name win-it-in-a-minute --network host win-it-in-a-minute
-```
-
-### Option 2: Node.js
-
-1. Install dependencies:
-   ```bash
-   npm install
-   ```
-
-2. Start the server:
-   ```bash
-   npm start
-   ```
-
-Open http://localhost:3000 in your browser
-
-## QLab Configuration
-
-- The app sends OSC messages to `127.0.0.1:53000` (QLab's default OSC port)
-- Create a Text cue in QLab and note its cue number
-- Enter the cue number in the settings panel at the bottom of the web app
-- Score updates will be sent as: `/cue/{cue_number}/text "X - Y"`
-
-## Keyboard Shortcuts
+### Keyboard Shortcuts
 
 | Key | Action |
-|-----|--------|
-| Q | Red team +1 |
-| A | Red team -1 |
-| P | Blue team +1 |
-| L | Blue team -1 |
-| Shift+R | Reset scores |
+|---|---|
+| `Q` | Red team +1 |
+| `A` | Red team -1 |
+| `P` | Blue team +1 |
+| `L` | Blue team -1 |
+| `Shift+R` | Reset all scores |
 
-## OSC Message Format
+### Incoming OSC Commands (Port 3001 UDP)
 
-### Outgoing (to QLab)
+| Command | Action |
+|---|---|
+| `/wiiam/red/up` | Red team +1 |
+| `/wiiam/red/down` | Red team -1 |
+| `/wiiam/blue/up` | Blue team +1 |
+| `/wiiam/blue/down` | Blue team -1 |
+| `/wiiam/reset/red` | Reset red to 0 |
+| `/wiiam/reset/blue` | Reset blue to 0 |
+| `/wiiam/reset` | Reset all scores |
 
-The app sends OSC messages in the format:
+### Outgoing OSC (to QLab)
+
+Create two text cues in QLab named `REDSCORE` and `BLUESCORE`. The app sends:
+
 ```
-/cue/REDSCORE/text "{redScore}"
-/cue/BLUESCORE/text "{blueScore}"
+/cue/REDSCORE/text "{score}"
+/cue/BLUESCORE/text "{score}"
 ```
 
-### Incoming (from QLab)
+## Docker Commands
 
-The app listens for OSC messages on port `3001` (UDP). Send the following from QLab to reset scores:
-```
-/wiiam/reset
-```
+| Task | Command |
+|---|---|
+| Rebuild after an update | `docker compose up -d --build` |
+| Stop | `docker compose stop` |
+| View logs | `docker compose logs -f win-it-in-a-minute` |
 
-This resets both team scores to 0 and updates all connected clients.
+## Support
+
+For license keys and technical support, contact [hello@twistedmelon.com](mailto:hello@twistedmelon.com).
+
+---
+
+*"Engineering the live experience." — Twisted Melon*
