@@ -126,6 +126,15 @@ if __name__ == "__main__":
 
     mid = sys.argv[1]
     lk = os.environ.get("LICENSE_KEY", "")
+    # Fall back to persisted file if env var is empty
+    if not lk:
+        license_file = "/app/data/license_key"
+        if os.path.exists(license_file):
+            try:
+                with open(license_file, "r") as f:
+                    lk = f.read().strip()
+            except Exception:
+                pass
     output = validate_license(lk, mid)
     print(json.dumps(output))
     sys.exit(0 if output["valid"] else 1)
