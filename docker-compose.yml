@@ -8,6 +8,7 @@ services:
     environment:
       - NODE_ENV=production
       - LICENSE_KEY=${LICENSE_KEY:-}
+      - HOST_HARDWARE_ID=${HOST_HARDWARE_ID:-}
     volumes:
       - wiiam-data:/app/data
     extra_hosts:
