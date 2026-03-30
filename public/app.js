@@ -1,6 +1,61 @@
-// WebSocket connection
+// WebSocket connection with auto-reconnect
 const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-const ws = new WebSocket(`${protocol}//${window.location.host}`);
+const wsUrl = `${protocol}//${window.location.host}`;
+let ws = null;
+let reconnectDelay = 1000;
+const MAX_RECONNECT_DELAY = 5000;
+
+function connectWebSocket() {
+  if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
+
+  try {
+    ws = new WebSocket(wsUrl);
+  } catch (e) {
+    scheduleReconnect();
+    return;
+  }
+
+  ws.onopen = () => {
+    console.log('WebSocket connected');
+    reconnectDelay = 1000;
+    // Server sends current state automatically on connection (server.js line 309)
+  };
+
+  ws.onmessage = (event) => {
+    const msg = JSON.parse(event.data);
+    if (msg.type === 'state') {
+      updateDisplay(msg.data);
+    }
+  };
+
+  ws.onclose = () => {
+    console.log('WebSocket disconnected');
+    scheduleReconnect();
+  };
+
+  ws.onerror = () => {
+    // onclose will fire after onerror, so reconnect happens there
+  };
+}
+
+function scheduleReconnect() {
+  setTimeout(() => {
+    reconnectDelay = Math.min(reconnectDelay * 1.5, MAX_RECONNECT_DELAY);
+    connectWebSocket();
+  }, reconnectDelay);
+}
+
+// Reconnect when iPad Safari resumes the tab
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) {
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      reconnectDelay = 1000;
+      connectWebSocket();
+    }
+  }
+});
+
+connectWebSocket();
 
 // Local score state
 let localState = { redScore: 0, blueScore: 0 };
@@ -18,33 +73,12 @@ function updateDisplay(state) {
   blueScoreEl.textContent = state.blueScore;
 }
 
-// WebSocket event handlers
-ws.onopen = () => {
-  console.log('WebSocket connected to:', `${protocol}//${window.location.host}`);
-};
-
-ws.onmessage = (event) => {
-  console.log('WebSocket received:', event.data);
-  const msg = JSON.parse(event.data);
-  if (msg.type === 'state') {
-    updateDisplay(msg.data);
-  }
-};
-
-ws.onclose = () => {
-  console.log('WebSocket disconnected');
-};
-
-ws.onerror = (error) => {
-  console.error('WebSocket error:', error);
-};
-
 // Send message to server
 async function send(message) {
   console.log('Sending message:', message);
   
   // Try WebSocket first
-  if (ws.readyState === WebSocket.OPEN) {
+  if (ws && ws.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify(message));
     return;
   }
@@ -106,6 +140,8 @@ scoreBtns.forEach(btn => {
 
 
 // ── License gate ──────────────────────────────────────
+let licenseConfirmedValid = false;
+
 async function checkLicenseStatus() {
   try {
     const res = await fetch('/api/license_status');
@@ -115,7 +151,7 @@ async function checkLicenseStatus() {
       updateLicenseGate(data);
     }
   } catch (e) {
-    // Network failure — keep gate in current state (hidden by default)
+    // Network failure — never show gate on network errors
     console.error('License check failed:', e);
   }
 }
@@ -128,11 +164,14 @@ function updateLicenseGate(data) {
   if (data.machine_id) machineIdEl.textContent = data.machine_id;
 
   if (data.valid) {
+    licenseConfirmedValid = true;
     gate.classList.add('hidden');
-  } else {
+  } else if (!licenseConfirmedValid) {
+    // Only show gate if license has NEVER been confirmed valid
     gate.classList.remove('hidden');
     errorEl.textContent = data.error || 'License is not valid';
   }
+  // If licenseConfirmedValid is true but data.valid is false, ignore — don't show gate
 }
 
 async function activateLicense() {
@@ -163,6 +202,7 @@ async function activateLicense() {
     if (data.valid) {
       status.textContent = 'License activated successfully!';
       status.className = 'activate-status success';
+      licenseConfirmedValid = true;
       updateLicenseGate(data);
     } else {
       status.textContent = data.error || 'Invalid license key.';
