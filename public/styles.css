@@ -64,19 +64,19 @@ html {
   bottom: 0;
   left: 50%;
   transform: translateX(-50%);
-  width: 3px;
+  width: 1px;
   z-index: 10;
   background: linear-gradient(
     180deg,
     transparent 0%,
     rgba(255, 255, 255, 0.06) 10%,
-    rgba(255, 255, 255, 0.2) 30%,
-    rgba(255, 255, 255, 0.35) 50%,
-    rgba(255, 255, 255, 0.2) 70%,
+    rgba(255, 255, 255, 0.15) 30%,
+    rgba(255, 255, 255, 0.25) 50%,
+    rgba(255, 255, 255, 0.15) 70%,
     rgba(255, 255, 255, 0.06) 90%,
     transparent 100%
   );
-  box-shadow: 0 0 20px rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 12px rgba(255, 255, 255, 0.05);
 }
 
 /* ---------- SETTINGS ---------- */
@@ -729,20 +729,25 @@ html {
 /* iPad landscape */
 @media (max-width: 1024px) {
   .score {
-    font-size: 13rem;
+    font-size: 9rem;
+    min-width: 120px;
   }
 
   .team-label {
-    font-size: 1.8rem;
+    font-size: 1.6rem;
   }
 
   .score-btn {
-    width: 95px;
-    height: 95px;
+    width: 80px;
+    height: 80px;
+  }
+
+  .score-row {
+    gap: 18px;
   }
 
   .team-side {
-    gap: 15px;
+    gap: 12px;
   }
 }
 
