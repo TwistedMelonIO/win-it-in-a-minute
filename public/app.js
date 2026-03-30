@@ -109,9 +109,13 @@ scoreBtns.forEach(btn => {
 async function checkLicenseStatus() {
   try {
     const res = await fetch('/api/license_status');
+    if (!res.ok) return;
     const data = await res.json();
-    updateLicenseGate(data);
+    if (data && typeof data.valid === 'boolean') {
+      updateLicenseGate(data);
+    }
   } catch (e) {
+    // Network failure — keep gate in current state (hidden by default)
     console.error('License check failed:', e);
   }
 }
