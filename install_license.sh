@@ -164,6 +164,47 @@ if [ "$LICENSE_STATUS" = "VALID" ]; then
     echo "  ========================================"
     echo ""
     echo "  The app is now running at: ${API_URL}"
+    echo ""
+
+    # ── Docforge Export (always) ─────────────────────────────
+    echo "  ── Certificate details ─────────────────"
+    echo "  (press Enter to skip a field)"
+    echo ""
+    read -p "  Licensee name (e.g. MSC Poesia): " LICENSEE_NAME
+    read -p "  Expiry days (blank = permanent): " EXPIRY_DAYS
+
+    TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%S+00:00")
+    DOCFORGE_FILE="$HOME/Desktop/win-it-in-a-minute-license.docforge"
+
+    python3 -c "
+import json, sys
+
+data = {
+    'docforge_version': '1.0',
+    'type': 'license',
+    'name': 'win-it-in-a-minute',
+    'created_at': sys.argv[1],
+    'updated_at': sys.argv[1],
+    'data': {
+        'project_id': 'win-it-in-a-minute',
+        'machine_id': sys.argv[2],
+        'licensee': sys.argv[3],
+        'expiry_days': sys.argv[4] if sys.argv[4] else '',
+        'license_key': sys.argv[5]
+    }
+}
+
+with open(sys.argv[6], 'w') as f:
+    json.dump(data, f, indent=2)
+" "$TIMESTAMP" "$MACHINE_ID" "$LICENSEE_NAME" "$EXPIRY_DAYS" "$LICENSE_KEY" "$DOCFORGE_FILE"
+
+    if [ -f "$DOCFORGE_FILE" ]; then
+        echo ""
+        echo "  ✓ Docforge file: $DOCFORGE_FILE"
+    else
+        echo ""
+        echo "  ✗ Failed to create .docforge file."
+    fi
 else
     echo "  ========================================"
     echo "    LICENSE ACTIVATION FAILED"

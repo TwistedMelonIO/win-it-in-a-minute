@@ -1,6 +1,6 @@
 {
   "name": "win-it-in-a-minute",
-  "version": "3.3.0",
+  "version": "3.4.0",
   "main": "index.js",
   "scripts": {
     "start": "node server.js",
