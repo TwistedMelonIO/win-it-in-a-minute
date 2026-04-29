@@ -16,6 +16,11 @@ const QLAB_PORT = parseInt(process.env.QLAB_PORT) || 53000;
 // OSC listen port for incoming messages from QLab
 const OSC_LISTEN_PORT = parseInt(process.env.OSC_LISTEN_PORT) || 3001;
 
+// QLab cues that drive Stream Deck page changes (cue name or number).
+// The cues themselves live in QLab and handle the actual SD switching.
+const SD_RED_CUE = process.env.SD_RED_CUE || 'SD2';
+const SD_BLUE_CUE = process.env.SD_BLUE_CUE || 'SD3';
+
 // Create OSC client for QLab
 const oscClient = new Client(QLAB_HOST, QLAB_PORT);
 
@@ -23,8 +28,22 @@ const oscClient = new Client(QLAB_HOST, QLAB_PORT);
 let gameState = {
   redScore: 0,
   blueScore: 0,
-  textCueNumber: '1' // Default text cue number in QLab
+  textCueNumber: '1', // Default text cue number in QLab
+  sdCurrentTeam: null // 'red' | 'blue' | null — tracks which Stream Deck page is active
 };
+
+// Fire a QLab cue (by name or number) — the cue itself handles the
+// Stream Deck page change via whatever it's wired to in QLab.
+function fireQlabCue(cue) {
+  const address = `/cue/${cue}/start`;
+  oscClient.send(address, (err) => {
+    if (err) {
+      addLog('ERROR', `QLab cue fire error: ${err.message}`);
+    } else {
+      addLog('INFO', `QLab cue fired: ${address}`);
+    }
+  });
+}
 
 // ── License state ──────────────────────────────────────
 let licenseState = {
@@ -73,11 +92,89 @@ function runPythonScript(scriptName, args = []) {
   });
 }
 
+// Two-tier persistence for the license key + machine ID:
+//   /app/data       → docker named volume (primary, fast)
+//   /app/host-data  → host bind mount (backup; survives volume destruction)
+// On boot we mirror missing files between the two so either can rebuild
+// the other. On every successful validation we write the key to both.
+const VOLUME_DIR = '/app/data';
+const HOST_BACKUP_DIR = '/app/host-data';
+const PERSIST_FILES = ['license_key', 'machine_id'];
+
+function safeRead(p) {
+  try { return fs.existsSync(p) ? fs.readFileSync(p, 'utf8').trim() : ''; }
+  catch { return ''; }
+}
+
+function safeWrite(p, content) {
+  try {
+    fs.mkdirSync(path.dirname(p), { recursive: true });
+    fs.writeFileSync(p, content, 'utf8');
+    return true;
+  } catch (err) {
+    addLog('ERROR', `Failed to write ${p}: ${err.message}`);
+    return false;
+  }
+}
+
+// Mirror license_key + machine_id between volume and host backup so each
+// can recover from the other. Called once at boot, before validation.
+function syncPersistenceTiers() {
+  for (const name of PERSIST_FILES) {
+    const volPath = path.join(VOLUME_DIR, name);
+    const hostPath = path.join(HOST_BACKUP_DIR, name);
+    const volVal = safeRead(volPath);
+    const hostVal = safeRead(hostPath);
+
+    if (volVal && !hostVal) {
+      if (safeWrite(hostPath, volVal)) addLog('INFO', `Restored host backup: ${name}`);
+    } else if (hostVal && !volVal) {
+      if (safeWrite(volPath, hostVal)) addLog('INFO', `Restored volume from host backup: ${name}`);
+    } else if (volVal && hostVal && volVal !== hostVal) {
+      // Conflict — prefer the volume (it's the live operational copy)
+      if (safeWrite(hostPath, volVal)) addLog('WARN', `Resolved ${name} mismatch: host backup overwritten with volume copy`);
+    }
+  }
+}
+
+// Persist the active license key to BOTH tiers so it survives rebuilds,
+// docker volume destruction, and Docker Desktop factory reset. Writes only
+// when a copy is missing or differs from the active key.
+function persistLicenseKey(key) {
+  if (!key) return;
+  const targets = [
+    path.join(VOLUME_DIR, 'license_key'),
+    path.join(HOST_BACKUP_DIR, 'license_key'),
+  ];
+  let wrote = false;
+  for (const target of targets) {
+    if (safeRead(target) !== key) {
+      if (safeWrite(target, key)) wrote = true;
+    }
+  }
+  if (wrote) addLog('INFO', 'License key written to persistent storage (volume + host backup)');
+}
+
 async function initializeLicense() {
   try {
-    // Get machine ID
+    // Sync the two persistence tiers BEFORE anything else, so a wiped
+    // volume can be repopulated from the host backup (or vice versa).
+    syncPersistenceTiers();
+
+    // Get machine ID (python script reads/writes /app/data/machine_id —
+    // already mirrored from host backup if needed by syncPersistenceTiers above)
     const machineId = await runPythonScript('machine_id_simple.py');
     addLog('INFO', `Machine ID: ${machineId}`);
+    // Mirror any new/regenerated machine_id back to host backup
+    const hostMid = path.join(HOST_BACKUP_DIR, 'machine_id');
+    if (safeRead(hostMid) !== machineId) safeWrite(hostMid, machineId);
+
+    // Resolve the active key: env var → volume → host backup.
+    let activeKey = (process.env.LICENSE_KEY || '').trim();
+    if (!activeKey) activeKey = safeRead(path.join(VOLUME_DIR, 'license_key'));
+    if (!activeKey) activeKey = safeRead(path.join(HOST_BACKUP_DIR, 'license_key'));
+    // Mirror to env so the python validator picks it up
+    if (activeKey) process.env.LICENSE_KEY = activeKey;
 
     // Validate license
     try {
@@ -106,6 +203,9 @@ async function initializeLicense() {
 
     if (licenseState.valid) {
       addLog('INFO', 'License is VALID');
+      // Bulletproof persistence: any successful validation writes the key
+      // to disk so it survives rebuilds, env unset, container recreate, etc.
+      persistLicenseKey(activeKey);
     } else {
       addLog('WARN', `License invalid: ${licenseState.error}`);
     }
@@ -205,21 +305,11 @@ app.post('/api/activate_license', async (req, res) => {
 
   const key = license_key.trim();
 
-  // Set in current process environment
+  // Set in current process environment — initializeLicense will validate
+  // and, on success, persist via persistLicenseKey(). Invalid keys are
+  // never written to disk, so a bad paste can't clobber a working license.
   process.env.LICENSE_KEY = key;
 
-  // Persist to data directory so it survives container restarts
-  const dataDir = '/app/data';
-  try {
-    if (fs.existsSync(dataDir)) {
-      fs.writeFileSync(path.join(dataDir, 'license_key'), key, 'utf8');
-      addLog('INFO', 'License key saved to persistent storage');
-    }
-  } catch (err) {
-    addLog('ERROR', 'Failed to persist license key: ' + err.message);
-  }
-
-  // Re-validate with the new key
   await initializeLicense();
   res.json(licenseState);
 });
@@ -369,6 +459,9 @@ function broadcast(data) {
     console.log(`  /wiiam/reset         → Reset both teams`);
     console.log(`  /wiiam/reset/red     → Reset red team only`);
     console.log(`  /wiiam/reset/blue    → Reset blue team only`);
+    console.log(`  /wiiam/sd/red        → Fire QLab cue ${SD_RED_CUE} (Red)`);
+    console.log(`  /wiiam/sd/blue       → Fire QLab cue ${SD_BLUE_CUE} (Blue)`);
+    console.log(`  /wiiam/sd/opposite   → Fire opposite team's QLab cue`);
     console.log('=====================================');
   });
 
@@ -413,6 +506,33 @@ function broadcast(data) {
       case '/wiiam/reset/blue':
         gameState.blueScore = 0;
         addLog('INFO', '[Companion] Blue team reset to 0');
+        break;
+
+      // ── Stream Deck page changes (via QLab cues) ─────
+      case '/wiiam/sd/red':
+        gameState.sdCurrentTeam = 'red';
+        fireQlabCue(SD_RED_CUE);
+        addLog('INFO', `[SD] Switched to RED (cue ${SD_RED_CUE})`);
+        break;
+
+      case '/wiiam/sd/blue':
+        gameState.sdCurrentTeam = 'blue';
+        fireQlabCue(SD_BLUE_CUE);
+        addLog('INFO', `[SD] Switched to BLUE (cue ${SD_BLUE_CUE})`);
+        break;
+
+      case '/wiiam/sd/opposite':
+        if (gameState.sdCurrentTeam === 'red') {
+          gameState.sdCurrentTeam = 'blue';
+          fireQlabCue(SD_BLUE_CUE);
+          addLog('INFO', `[SD] Opposite → BLUE (cue ${SD_BLUE_CUE})`);
+        } else if (gameState.sdCurrentTeam === 'blue') {
+          gameState.sdCurrentTeam = 'red';
+          fireQlabCue(SD_RED_CUE);
+          addLog('INFO', `[SD] Opposite → RED (cue ${SD_RED_CUE})`);
+        } else {
+          addLog('WARN', '[SD] /wiiam/sd/opposite called before red/blue was set — ignoring');
+        }
         break;
 
       default:

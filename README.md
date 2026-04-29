@@ -78,6 +78,28 @@ cd ~ && rm -rf win-it-in-a-minute && git clone https://github.com/TwistedMelonIO
 | `/wiiam/reset/red` | Reset red to 0 |
 | `/wiiam/reset/blue` | Reset blue to 0 |
 | `/wiiam/reset` | Reset all scores |
+| `/wiiam/sd/red` | Stream Deck → Red page (default 2) |
+| `/wiiam/sd/blue` | Stream Deck → Blue page (default 3) |
+| `/wiiam/sd/opposite` | Stream Deck → opposite team's page |
+
+### Stream Deck Integration (via QLab)
+
+The `/wiiam/sd/*` commands fire QLab cues that already know how to drive the Stream Deck. By default:
+
+| Command | Fires QLab cue |
+|---|---|
+| `/wiiam/sd/red` | `SD2` (Red — Stream Deck page 2) |
+| `/wiiam/sd/blue` | `SD3` (Blue — Stream Deck page 3) |
+| `/wiiam/sd/opposite` | the opposite team's cue |
+
+OSC sent to QLab: `/cue/<name>/start`. Override the cue identifiers via env vars in `docker-compose.yml`:
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `SD_RED_CUE` | `SD2` | QLab cue name/number for Red |
+| `SD_BLUE_CUE` | `SD3` | QLab cue name/number for Blue |
+
+Use `/wiiam/sd/red` or `/wiiam/sd/blue` after the Round 1 coin flip; `/wiiam/sd/opposite` then flips to the other team for the next turn.
 
 ### Outgoing OSC (to QLab)
 

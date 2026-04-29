@@ -9,8 +9,14 @@ services:
       - NODE_ENV=production
       - LICENSE_KEY=${LICENSE_KEY:-}
       - HOST_HARDWARE_ID=${HOST_HARDWARE_ID:-}
+      - SD_RED_CUE=${SD_RED_CUE:-SD2}
+      - SD_BLUE_CUE=${SD_BLUE_CUE:-SD3}
     volumes:
       - wiiam-data:/app/data
+      # Host-side backup of license_key + machine_id. Survives docker volume
+      # destruction and Docker Desktop factory reset. Defense-in-depth so the
+      # demo unit can never lose its license short of deleting the user's home dir.
+      - ${HOME}/.twisted-melon/wiiam:/app/host-data
     extra_hosts:
       - "host.docker.internal:host-gateway"
     restart: unless-stopped
