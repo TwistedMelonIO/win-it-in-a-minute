@@ -8,6 +8,12 @@ const { spawn } = require('child_process');
 const app = express();
 const PORT = 3000;
 
+// Resolve app version once at startup (package.json is read-only in container).
+let APP_VERSION = 'unknown';
+try {
+  APP_VERSION = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf8')).version || 'unknown';
+} catch { /* keep default */ }
+
 // QLab OSC settings - default QLab listens on port 53000
 // Use host.docker.internal when running in Docker on macOS
 const QLAB_HOST = process.env.QLAB_HOST || 'host.docker.internal';
@@ -328,6 +334,112 @@ app.post('/api/activate_license', async (req, res) => {
 // ── Logs API endpoint ──────────────────────────────────
 app.get('/api/logs', (req, res) => {
   res.json({ logs: logBuffer });
+});
+
+// ── Self-Test Endpoints ────────────────────────────────
+// Mirrors chart-toppers /api/selftest contract so docforge can build a
+// uniform Installation Test Report PDF for any show.
+app.get('/api/selftest', (req, res) => {
+  const results = [];
+  const addResult = (category, test, passed, details) => {
+    results.push({ category, test, passed, details });
+  };
+
+  // Infrastructure
+  addResult(
+    'Infrastructure',
+    'License valid',
+    !!licenseState.valid,
+    licenseState.valid ? `Licensee: ${licenseState.licensee || 'unknown'}` : (licenseState.error || 'No license key')
+  );
+
+  const oscPort = OSC_LISTEN_PORT;
+  addResult(
+    'Infrastructure',
+    'OSC listener configured',
+    !!oscPort && oscPort > 0,
+    `Listening on UDP :${oscPort}`
+  );
+
+  addResult(
+    'Infrastructure',
+    'QLab OSC target configured',
+    !!QLAB_HOST && !!QLAB_PORT,
+    `${QLAB_HOST}:${QLAB_PORT}`
+  );
+
+  // License Persistence (dual-tier, non-destructive runtime checks)
+  const volKey = safeRead(path.join(VOLUME_DIR, 'license_key'));
+  const hostKey = safeRead(path.join(HOST_BACKUP_DIR, 'license_key'));
+  addResult(
+    'License Persistence',
+    'Volume copy present',
+    !!volKey,
+    volKey ? `${VOLUME_DIR}/license_key (${volKey.length} bytes)` : 'Missing — license will not survive container recreate'
+  );
+  addResult(
+    'License Persistence',
+    'Host backup present',
+    !!hostKey,
+    hostKey ? `${HOST_BACKUP_DIR}/license_key (${hostKey.length} bytes)` : 'Missing — license will not survive volume destruction'
+  );
+  addResult(
+    'License Persistence',
+    'Tiers in sync',
+    !!(volKey && hostKey && volKey === hostKey),
+    (volKey && hostKey && volKey === hostKey) ? 'Volume and host backup identical' :
+      (!volKey || !hostKey) ? 'One or both tiers missing' : 'Tiers diverge — will resolve on next boot'
+  );
+
+  // Stream Deck OSC configuration
+  addResult(
+    'Stream Deck Configuration',
+    'Red team cue configured',
+    !!SD_RED_CUE,
+    `Cue: ${SD_RED_CUE}`
+  );
+  addResult(
+    'Stream Deck Configuration',
+    'Blue team cue configured',
+    !!SD_BLUE_CUE,
+    `Cue: ${SD_BLUE_CUE}`
+  );
+
+  const passed = results.filter(r => r.passed).length;
+  res.json({
+    success: true,
+    version: APP_VERSION,
+    timestamp: new Date().toISOString(),
+    machineName: require('os').hostname(),
+    project_name: 'Win It In A Minute',
+    project_key: 'win-it-in-a-minute',
+    results,
+    summary: { total: results.length, passed, failed: results.length - passed },
+  });
+});
+
+app.get('/api/selftest/checklist', (req, res) => {
+  res.json({
+    success: true,
+    version: APP_VERSION,
+    checklist: [
+      { id: 1, round: 'Setup',     item: 'Web UI loads on port 4000 from operator iPad' },
+      { id: 2, round: 'Setup',     item: 'Both Red and Blue score panels render correctly' },
+      { id: 3, round: 'Setup',     item: 'Settings page accessible via cog icon' },
+      { id: 4, round: 'Round 1',   item: '/wiiam/sd/red fires QLab cue SD2 → Stream Deck shows Red page' },
+      { id: 5, round: 'Round 1',   item: '/wiiam/sd/blue fires QLab cue SD3 → Stream Deck shows Blue page' },
+      { id: 6, round: 'Round 1',   item: '/wiiam/sd/opposite flips to the other team after a coin flip' },
+      { id: 7, round: 'Scoring',   item: 'Red +1 button increments red score on screen and in QLab REDSCORE cue' },
+      { id: 8, round: 'Scoring',   item: 'Blue +1 button increments blue score on screen and in QLab BLUESCORE cue' },
+      { id: 9, round: 'Scoring',   item: 'Keyboard Q/A controls red, P/L controls blue' },
+      { id: 10, round: 'Scoring',  item: 'Shift+R resets both scores to 0' },
+      { id: 11, round: 'OSC',      item: 'OSC /wiiam/red/up from Companion increments red score' },
+      { id: 12, round: 'OSC',      item: 'OSC /wiiam/blue/up from Companion increments blue score' },
+      { id: 13, round: 'OSC',      item: 'OSC /wiiam/reset clears both scores' },
+      { id: 14, round: 'Sync',     item: 'Two browser tabs stay in sync via WebSocket' },
+      { id: 15, round: 'Recovery', item: 'Container restart preserves the active license (no re-activation prompt)' },
+    ],
+  });
 });
 
 // ── Master Reset API endpoint ──────────────────────────
