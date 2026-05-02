@@ -411,6 +411,8 @@ app.get('/api/selftest', (req, res) => {
     version: APP_VERSION,
     timestamp: new Date().toISOString(),
     machineName: require('os').hostname(),
+    machineId: (licenseState && licenseState.machine_id) || null,
+    licensee: (licenseState && licenseState.licensee) || null,
     project_name: 'Win It In A Minute',
     project_key: 'win-it-in-a-minute',
     results,
