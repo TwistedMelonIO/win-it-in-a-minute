@@ -36,6 +36,34 @@ Or to do a full clean reinstall (re-downloads everything):
 cd ~ && rm -rf win-it-in-a-minute && git clone https://github.com/TwistedMelonIO/win-it-in-a-minute.git && cd win-it-in-a-minute && ./install_license.sh
 ```
 
+## All-in-One Updater (Chart Toppers + WIIAM + Docforge)
+
+If the machine runs more than one Twisted Melon Docker app, the all-in-one updater (shipped in the **chart-toppers** repo) pulls the latest GitHub release of all three projects and rebuilds them in one go. It also installs the Chart Toppers buzzer LaunchAgent automatically, so the buzzer reconnects after every Chart Toppers update.
+
+**Prerequisites:** `git`, `docker` (Docker Desktop running), and access to the private TwistedMelonIO repos. On a fresh Mac, install the Xcode Command Line Tools first (`xcode-select --install`).
+
+**First time on a new machine:**
+
+```bash
+mkdir -p ~/TwistedMelon
+git clone https://github.com/TwistedMelonIO/chart-toppers.git ~/TwistedMelon/chart-toppers
+~/TwistedMelon/chart-toppers/scripts/update-dockers.sh
+```
+
+The first `git clone` will prompt for GitHub credentials — the same account is used to clone the other repos. License keys, Machine IDs, and persistent settings survive every rebuild via named Docker volumes.
+
+**Every time after that:**
+
+```bash
+cd ~/TwistedMelon/chart-toppers && git pull && ./scripts/update-dockers.sh
+```
+
+**Update only Win It In A Minute:**
+
+```bash
+~/TwistedMelon/chart-toppers/scripts/update-dockers.sh wim
+```
+
 ---
 
 ## Features
